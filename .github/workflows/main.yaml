@@ -14,7 +14,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.8'
+          python-version: '3.7'
 
       - run: |
           pip3 install --upgrade virtualenv
@@ -32,7 +32,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.8'
+          python-version: '3.7'
 
       - run: |
           pip3 install --upgrade virtualenv
@@ -59,7 +59,7 @@ jobs:
         run: npm install
 
       - name: Run Snyk
-        run: snyk test --json > snyk-results.json
+        run: snyk test --strict-out-of-sync=false --json . > snyk-results.json
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true             # allow the build to fail, similar to allow_failure: true
