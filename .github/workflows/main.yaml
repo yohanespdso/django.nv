@@ -9,10 +9,10 @@ jobs:
   build:
     runs-on: ubuntu-22.04                    # similar to "image" in GitLab
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
 
       - name: Setup python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
           python-version: '3.7'
 
@@ -27,10 +27,10 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
 
       - name: Setup python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
           python-version: '3.7'
 
@@ -41,31 +41,26 @@ jobs:
           pip install -r requirements.txt
           python manage.py test taskManager
 
-  oast-frontend:
+  sonarqube:
     runs-on: ubuntu-22.04
-    needs: test
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '12.x'
-
-      - run: npm install
-
-      - run: docker run --rm -v $(pwd):/src -w /src hysnsec/retire --outputformat json --outputpath retirejs-report.json --severity high
-        continue-on-error: true
-
-      - uses: actions/upload-artifact@v4
-        name: "Upload RetireJS Artifact - v4"
-        with:
-          name: RetireJS
-          path: retirejs-report.json
-        if: always()                        # what is this for?
+    - name: SonarQube Scan
+      uses: sonarsource/sonarqube-scan-action@master
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      with:
+        projectBaseDir: .
+        args: >
+          -Dsonar.projectKey=Django
 
   integration:
     runs-on: ubuntu-22.04
-    needs: oast-frontend
+    needs: test
     steps:
       - run: echo "This is an integration step"
       - run: exit 1
