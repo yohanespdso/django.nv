@@ -1,4 +1,3 @@
-cat >.github/workflows/main.yaml<<EOF
 name: Django                                  # workflow name
 
 on:
@@ -15,7 +14,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.7'
+          python-version: '3.6'
 
       - run: |
           pip3 install --upgrade virtualenv
@@ -33,7 +32,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.7'
+          python-version: '3.6'
 
       - run: |
           pip3 install --upgrade virtualenv
@@ -55,4 +54,3 @@ jobs:
     needs: integration
     steps:
       - run: echo "This is a deploy step."
-EOF
