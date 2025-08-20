@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04                    # similar to "image" in GitLab
+    runs-on: ubuntu-22.04                   # similar to "image" in GitLab
     steps:
       - uses: actions/checkout@v2
 
@@ -41,27 +41,24 @@ jobs:
           pip install -r requirements.txt
           python manage.py test taskManager
 
-  sonarqube:
+  oast-frontend:
+    name: Security Scan
     runs-on: ubuntu-22.04
+    # Skip any PR created by dependabot to avoid permission issues
+    if: (github.actor != 'dependabot[bot]')
+    container:
+      image: semgrep/semgrep
     steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: SonarQube Scan
-      uses: sonarsource/sonarqube-scan-action@master
-      continue-on-error: true
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      with:
-        projectBaseDir: .
-        args: >
-          -Dsonar.projectKey=Django
+      - name: Run Semgrep scan
+        run: semgrep scan --config auto --config p/security-audit --config p/secrets --config p/django
+        continue-on-error: true             # allow the build to fail, similar to "allow_failure: true" in GitLab
 
   integration:
     runs-on: ubuntu-22.04
-    needs: test
+    needs: oast-frontend
     steps:
       - run: echo "This is an integration step"
       - run: exit 1
