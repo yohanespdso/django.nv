@@ -64,6 +64,7 @@ jobs:
 
   integration:
     runs-on: ubuntu-22.04
+    needs: container_scanning
     steps:
       - run: echo "This is an integration step"
       - run: exit 1
