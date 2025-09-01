@@ -46,5 +46,6 @@ workflows:
       - build
       - test
       - integration
+      - odc-backend
       - prod:
           type: approval
