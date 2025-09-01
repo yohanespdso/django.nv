@@ -1,0 +1,41 @@
+jobs:
+  build:
+    docker:
+      - image: cimg/base:stable                   # similar to "image" in GitLab
+    steps:
+      - checkout
+      - run: echo "This is a build step"          # similar to "script" in GitLab
+
+  test:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run: echo "This is a test step"
+
+  integration:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          command: |
+            echo "This is an integration step"
+            exit 1
+
+  prod:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run: echo "This is a deploy step"
+
+workflows:
+  version: 2
+  django:
+    jobs:
+      - build
+      - test
+      - integration
+      - prod:
+          type: approval
