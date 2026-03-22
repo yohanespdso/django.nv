@@ -56,7 +56,7 @@ workflows:
       - test:
           requires:
             - build
-      - oast-snyk:
+      - zap_baseline:
           requires:
             - test
       - integration:
