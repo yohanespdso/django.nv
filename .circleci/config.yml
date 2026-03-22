@@ -61,7 +61,7 @@ workflows:
             - test
       - integration:
           requires:
-            - oast-snyk
+            - zap_baseline
       - prod:
           type: approval
           requires:
