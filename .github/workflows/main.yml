@@ -43,11 +43,12 @@ jobs:
 
   sonarqube:
     runs-on: ubuntu-22.04
+  
     steps:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
-
+  
     - name: SonarQube Scan
       uses: sonarsource/sonarqube-scan-action@master
       continue-on-error: true
@@ -58,6 +59,10 @@ jobs:
         projectBaseDir: .
         args: >
           -Dsonar.projectKey=Django
+          -Dsonar.ws.timeout=300
+          -Dsonar.scanner.socketTimeout=300
+          -Dsonar.scanner.responseTimeout=300
+          -Dsonar.exclusions=**/node_modules/**,**/migrations/**,**/*.min.js
 
   integration:
     runs-on: ubuntu-22.04
