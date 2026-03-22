@@ -1,75 +1,85 @@
+name: Django                                  # workflow name
+
+on:
+  push:
+    branches:                                 # similar to "only" in GitLab
+      - main
+
 jobs:
   build:
-    docker:
-      - image: python:3.6                   # similar to "image" in GitLab
+    runs-on: ubuntu-22.04                    # similar to "image" in GitLab
     steps:
-      - checkout
-      - run: |                              # similar to "script" in GitLab
+      - uses: actions/checkout@v4
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.7'
+
+      - run: |
+          pip3 install --upgrade virtualenv
+          virtualenv env
+          source env/bin/activate
           pip install -r requirements.txt
           python manage.py check
 
   test:
-    docker:
-      - image: python:3.6
+    runs-on: ubuntu-22.04
+    needs: build
     steps:
-      - checkout
+      - uses: actions/checkout@v4
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.7'
+
       - run: |
+          pip3 install --upgrade virtualenv
+          virtualenv env
+          source env/bin/activate
           pip install -r requirements.txt
-          python manage.py test taskManager || true
+          python manage.py test taskManager
 
   oast-snyk:
-    docker:
-      - image: node:alpine3.10
+    runs-on: ubuntu-22.04
+    needs: test
     steps:
-      - checkout
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@master
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
 
-      - run: 
-          command: |
-            wget -O snyk https://github.com/snyk/cli/releases/download/v1.1156.0/snyk-alpine
-            chmod +x snyk
-            mv snyk /usr/local/bin/
-            npm install
-            snyk auth 6dbd1d2b-bad6-4317-9dfb-fa37fb15a537
-            snyk test --json > snyk-results.json || true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - store_artifacts:
+      - name: Install Node modules
+        run: npm install
+
+      - name: Run Snyk
+        run: snyk test --strict-out-of-sync=false --json > snyk-results.json
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true             # allow the build to fail, similar to allow_failure: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Snyk
           path: snyk-results.json
-          destination: snyk-artifact
-          when: always
+        if: always()        # what is this for?
 
   integration:
-    docker:
-      - image: python:3.6
+    runs-on: ubuntu-22.04
+    needs: oast-snyk
     steps:
-      - checkout
-      - run:
-          command: |
-            echo "This is an integration step"
-            exit 1
-          when: on_fail         # Even if the job fails, continue to the next stages
+      - run: echo "This is an integration step"
+      - run: exit 1
+        continue-on-error: true
 
   prod:
-    docker:
-      - image: python:3.6
+    runs-on: ubuntu-22.04
+    needs: integration
     steps:
-      - checkout
       - run: echo "This is a deploy step."
-
-workflows:
-  version: 2
-  django:
-    jobs:
-      - build
-      - test:
-          requires:
-            - build
-      - oast-snyk:
-          requires:
-            - test
-      - integration:
-          requires:
-            - oast-snyk
-      - prod:
-          type: approval
-          requires:
-            - integration
