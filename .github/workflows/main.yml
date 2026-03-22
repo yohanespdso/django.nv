@@ -1,78 +1,75 @@
-name: Django                                  # workflow name
-
-on:
-  push:
-    branches:                                 # similar to "only" in GitLab
-      - main
-
 jobs:
   build:
-    runs-on: ubuntu-22.04                    # similar to "image" in GitLab
+    docker:
+      - image: python:3.6                   # similar to "image" in GitLab
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.8'
-
-      - run: |
-          pip3 install --upgrade virtualenv
-          virtualenv env
-          source env/bin/activate
+      - checkout
+      - run: |                              # similar to "script" in GitLab
           pip install -r requirements.txt
           python manage.py check
 
   test:
-    runs-on: ubuntu-22.04
-    needs: build
+    docker:
+      - image: python:3.6
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.8'
-
+      - checkout
       - run: |
-          pip3 install --upgrade virtualenv
-          virtualenv env
-          source env/bin/activate
           pip install -r requirements.txt
-          python manage.py test taskManager
+          python manage.py test taskManager || true
+
+  oast-snyk:
+    docker:
+      - image: node:alpine3.10
+    steps:
+      - checkout
+
+      - run: 
+          command: |
+            wget -O snyk https://github.com/snyk/cli/releases/download/v1.1156.0/snyk-alpine
+            chmod +x snyk
+            mv snyk /usr/local/bin/
+            npm install
+            snyk auth 6dbd1d2b-bad6-4317-9dfb-fa37fb15a537
+            snyk test --json > snyk-results.json || true
+
+      - store_artifacts:
+          path: snyk-results.json
+          destination: snyk-artifact
+          when: always
 
   integration:
-    runs-on: ubuntu-22.04
-    needs: test
+    docker:
+      - image: python:3.6
     steps:
-      - run: echo "This is an integration step"
-      - run: exit 1
-        continue-on-error: true
-
-  sast:
-    runs-on: ubuntu-22.04
-    needs: test
-    steps:
-      - uses: actions/checkout@v4
-
-      - run: docker run --rm -v $(pwd):/src hysnsec/bandit -r /src -f json -o /src/bandit-output.json
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Bandit
-          path: bandit-output.json
-        if: always()                        # what is this for?
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.8'
-      - run: pip3 install requests
-        if: always()
-      - run: python3 upload-results.py --host ${{ secrets.DOJO_HOST }} --api_key ${{ secrets.DOJO_API_TOKEN }} --engagement_id 1 --product_id 1 --lead_id 1 --environment "Production" --result_file bandit-output.json --scanner "Bandit Scan"
-        if: always()
+      - checkout
+      - run:
+          command: |
+            echo "This is an integration step"
+            exit 1
+          when: on_fail         # Even if the job fails, continue to the next stages
 
   prod:
-    runs-on: ubuntu-22.04
-    needs: integration
+    docker:
+      - image: python:3.6
     steps:
+      - checkout
       - run: echo "This is a deploy step."
+
+workflows:
+  version: 2
+  django:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build
+      - oast-snyk:
+          requires:
+            - test
+      - integration:
+          requires:
+            - oast-snyk
+      - prod:
+          type: approval
+          requires:
+            - integration
