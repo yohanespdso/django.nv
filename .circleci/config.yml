@@ -17,25 +17,18 @@ jobs:
           pip install -r requirements.txt
           python manage.py test taskManager || true
 
-  oast-snyk:
-    docker:
-      - image: node:alpine3.10
+  zap_baseline:
+    machine: true
     steps:
       - checkout
 
-      - run: 
-          command: |
-            wget -O snyk https://github.com/snyk/cli/releases/download/v1.1156.0/snyk-alpine
-            chmod +x snyk
-            mv snyk /usr/local/bin/
-            npm install
-            snyk auth 6dbd1d2b-bad6-4317-9dfb-fa37fb15a537
-            snyk test --json > snyk-results.json || true
+      - run: |
+          docker pull hysnsec/zap:2.16.1
+          docker run --user root --rm -v $(pwd):/zap/wrk:rw -w /zap hysnsec/zap:2.16.1 zap-baseline.py -t https://prod-ixqn1ykn.stg.lab.practical-devsecops.training -J zap-output.json || true
 
       - store_artifacts:
-          path: snyk-results.json
-          destination: snyk-artifact
-          when: always
+          path: zap-output.json
+          destination: zap-artifact
 
   integration:
     docker:
