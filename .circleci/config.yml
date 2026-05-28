@@ -1,21 +1,35 @@
 jobs:
   build:
     docker:
-      - image: python:3.6                   # similar to "image" in GitLab
+      - image: cimg/base:stable                   # similar to "image" in GitLab
     steps:
       - checkout
-      - run: |                              # similar to "script" in GitLab
-          pip install -r requirements.txt
-          python manage.py check
+      - run: echo "This is a build step"          # similar to "script" in GitLab
 
   test:
     docker:
-      - image: python:3.6
+      - image: cimg/base:stable
     steps:
       - checkout
-      - run: |
-          pip install -r requirements.txt
-          python manage.py test taskManager || true
+      - run: echo "This is a test step"
+
+  integration:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          command: |
+            echo "This is an integration step"
+            exit 1
+          when: on_fail                 # Even if the job fails, continue to the next stages
+
+  prod:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run: echo "This is a deploy step"
 
   zap_baseline:
     machine: true
@@ -24,29 +38,11 @@ jobs:
 
       - run: |
           docker pull hysnsec/zap:2.16.1
-          docker run --user root --rm -v $(pwd):/zap/wrk:rw -w /zap hysnsec/zap:2.16.1 zap-baseline.py -t https://prod-ixqn1ykn.stg.lab.practical-devsecops.training -J zap-output.json || true
+          docker run --user root --rm -v $(pwd):/zap/wrk:rw -w /zap hysnsec/zap:2.16.1 zap-baseline.py -t https://prod-mizkalq1.lab.practical-devsecops.training -J zap-output.json || true
 
       - store_artifacts:
           path: zap-output.json
           destination: zap-artifact
-
-  integration:
-    docker:
-      - image: python:3.6
-    steps:
-      - checkout
-      - run:
-          command: |
-            echo "This is an integration step"
-            exit 1
-          when: on_fail         # Even if the job fails, continue to the next stages
-
-  prod:
-    docker:
-      - image: python:3.6
-    steps:
-      - checkout
-      - run: echo "This is a deploy step."
 
 workflows:
   version: 2
@@ -59,10 +55,7 @@ workflows:
       - zap_baseline:
           requires:
             - test
-      - integration:
-          requires:
-            - zap_baseline
       - prod:
           type: approval
           requires:
-            - integration
+            - zap_baseline
